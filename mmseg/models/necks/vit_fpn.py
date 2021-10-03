@@ -6,57 +6,11 @@ from itertools import repeat
 from torch._six import container_abcs
 import warnings
 
-from .helpers import load_pretrained
-# from .layers import DropPath, to_2tuple, trunc_normal_
 
 from ..builder import NECKS
+# from .helpers import load_pretrained
+# from .layers import DropPath, to_2tuple, trunc_normal_
 
-
-def _cfg(url='', **kwargs):
-    return {
-        'url': url,
-        'num_classes': 1000, 'input_size': (3, 224, 224), 'pool_size': None,
-        'crop_pct': .9, 'interpolation': 'bicubic',
-        'mean': (0.485, 0.456, 0.406), 'std': (0.229, 0.224, 0.225),
-        'first_conv': '', 'classifier': 'head',
-        **kwargs
-    }
-
-
-default_cfgs = {
-    # patch models
-    'vit_small_patch16_224': _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/vit_small_p16_224-15ec54c9.pth',
-    ),
-    'vit_base_patch16_224': _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/vit_base_p16_224-4e355ebd.pth',
-    ),
-    'vit_base_patch16_384': _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-vitjx/jx_vit_base_p16_384-83fb41ba.pth',
-        input_size=(3, 384, 384), mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5), crop_pct=1.0),
-    'vit_base_patch32_384': _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-vitjx/jx_vit_base_p32_384-830016f5.pth',
-        input_size=(3, 384, 384), mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5), crop_pct=1.0),
-    'vit_large_patch16_224': _cfg(),
-    'vit_large_patch16_384': _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-vitjx/jx_vit_large_p16_384-b3be5167.pth',
-        input_size=(3, 384, 384), mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5), crop_pct=1.0,
-    ),
-    'vit_large_patch32_384': _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-vitjx/jx_vit_large_p32_384-9b920ba8.pth',
-        input_size=(3, 384, 384), mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5), crop_pct=1.0),
-    'vit_huge_patch16_224': _cfg(),
-    'vit_huge_patch32_384': _cfg(input_size=(3, 384, 384)),
-    # hybrid models
-    'vit_small_resnet26d_224': _cfg(),
-    'vit_small_resnet50d_s3_224': _cfg(),
-    'vit_base_resnet26d_224': _cfg(),
-    'vit_base_resnet50d_224': _cfg(),
-    'deit_base_distilled_path16_384': _cfg(
-        url='https://dl.fbaipublicfiles.com/deit/deit_base_distilled_patch16_384-d0272ac0.pth',
-        input_size=(3, 384, 384), mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5), crop_pct=1.0, checkpoint=True,
-    ),
-}
 
 
 def to_2tuple(x):
@@ -179,6 +133,8 @@ class Attention(nn.Module):
         B, N, C = x.shape
         q, k, v = self.qkv(x).reshape(B, N, 3, self.num_heads,
                                       C // self.num_heads).permute(2, 0, 3, 1, 4)
+        # print(B, N, C)
+        # print(q.shape, k.shape, v.shape)
 
         attn = (q @ k.transpose(-2, -1)) * self.scale
         attn = attn.softmax(dim=-1)
@@ -187,6 +143,7 @@ class Attention(nn.Module):
         x = (attn @ v).transpose(1, 2).reshape(B, N, C)
         x = self.proj(x)
         x = self.proj_drop(x)
+        # print(x.shape)
         return x
 
 
@@ -216,7 +173,7 @@ class PatchEmbed(nn.Module):
     """ Image to Patch Embedding
     """
 
-    def __init__(self, img_size=224, patch_size=16, in_chans=3, embed_dim=768):
+    def __init__(self, img_size=224, patch_size=4, in_chans=3, embed_dim=768):
         super().__init__()
         img_size = to_2tuple(img_size)
         patch_size = to_2tuple(patch_size)
@@ -237,6 +194,7 @@ class PatchEmbed(nn.Module):
 
         # x = F.interpolate(x, size=2*x.shape[-1], mode='bilinear', align_corners=True)
         x = self.proj(x)
+        # print("======================", "feature map patch", x.shape, '==========================')
         return x
 
 
@@ -277,15 +235,15 @@ class HybridEmbed(nn.Module):
         return x
 
 
-@BACKBONES.register_module()
+@NECKS.register_module()
 class VitFpn(nn.Module):
     """ Vision Transformer with support for patch or hybrid CNN input stage
     """
 
-    def __init__(self, img_size=[h, h/2, h/4, h/8], patch_size=[8, 4, 2, 1], in_chans=[256, 512, 1024, 2048],
+    def __init__(self, img_size=[192, 96, 48, 24], patch_size=[4, 4, 4, 4], in_chans=[256, 512, 1024, 2048],
                  embed_dim=[256, 512, 1024, 2048], depth=3, num_heads=8, num_classes=19, num_stages=4, mlp_ratio=4., qkv_bias=True, qk_scale=None, drop_rate=0.1, attn_drop_rate=0.,
                  drop_path_rate=0., hybrid_backbone=None, norm_layer=partial(nn.LayerNorm, eps=1e-6), norm_cfg=None,
-                 pos_embed_interp=False, random_init=False, align_corners=False, **kwargs):
+                 pos_embed_interp=False, random_init=True, align_corners=False, **kwargs):
         super(VitFpn, self).__init__(**kwargs)
         self.img_size = img_size
         self.patch_size = patch_size
@@ -318,27 +276,27 @@ class VitFpn(nn.Module):
                 for i in range(self.num_stages)])
         self.num_patches = [self.patch_embed[i].num_patches for i in range(self.num_stages)]
 
-        self.cls_token = nn.Parameter(torch.zeros(1, 1, self.embed_dim))
-        self.pos_embed = nn.Parameter(torch.zeros(
-            1, self.num_patches + 1, self.embed_dim))
+        # self.cls_token = [nn.Parameter(torch.zeros(1, 1, self.embed_dim[i])) for i in range(self.num_stages)]
+        # self.pos_embed = [nn.Parameter(torch.zeros(
+        #     1, self.num_patches[i] + 1, self.embed_dim[i])) for i in range(self.num_stages)]
         self.pos_drop = nn.Dropout(p=self.drop_rate)
 
         dpr = [x.item() for x in torch.linspace(0, self.drop_path_rate,
                                                 self.depth)]  # stochastic depth decay rule
-        self.blocks = nn.MouduleList()
-        for i in range(self.stages):
+        self.blocks = nn.ModuleList([])
+        for i in range(self.num_stages):
              self.blocks.append(nn.ModuleList([
                 Block(
-                    dim=self.embed_dim[i], num_heads=self.num_heads[i], mlp_ratio=self.mlp_ratio, qkv_bias=self.qkv_bias, qk_scale=self.qk_scale,
+                    dim=self.embed_dim[i], num_heads=self.num_heads, mlp_ratio=self.mlp_ratio, qkv_bias=self.qkv_bias, qk_scale=self.qk_scale,
                     drop=self.drop_rate, attn_drop=self.attn_drop_rate, drop_path=dpr[j], norm_layer=self.norm_layer)
                 for j in range(self.depth)]))
 
         # NOTE as per official impl, we could have a pre-logits representation dense layer + tanh here
         # self.repr = nn.Linear(embed_dim, representation_size)
         # self.repr_act = nn.Tanh()
-
-        trunc_normal_(self.pos_embed, std=.02)
-        trunc_normal_(self.cls_token, std=.02)
+        # for i in range(self.num_stages):
+        #     trunc_normal_(self.pos_embed[i], std=.02)
+        #     trunc_normal_(self.cls_token[i], std=.02)
         # self.apply(self._init_weights)
 
     def init_weights(self, pretrained=None):
@@ -354,23 +312,13 @@ class VitFpn(nn.Module):
                 nn.init.constant_(m.bias, 0)
                 nn.init.constant_(m.weight, 1.0)
 
-        if not self.random_init:
-            self.default_cfg = default_cfgs[self.model_name]
-
-            if self.model_name in ['vit_small_patch16_224', 'vit_base_patch16_224']:
-                load_pretrained(self, num_classes=self.num_classes, in_chans=self.in_chans, pos_embed_interp=self.pos_embed_interp,
-                                num_patches=self.patch_embed.num_patches, align_corners=self.align_corners, filter_fn=self._conv_filter)
-            else:
-                load_pretrained(self, num_classes=self.num_classes, in_chans=self.in_chans, pos_embed_interp=self.pos_embed_interp,
-                                num_patches=self.patch_embed.num_patches, align_corners=self.align_corners)
-        else:
             print('Initialize weight randomly')
 
     @property
     def no_weight_decay(self):
         return {'pos_embed', 'cls_token'}
 
-    def _conv_filter(self, state_dict, patch_size=16):
+    def _conv_filter(self, state_dict, patch_size=4):
         """ convert patch embedding weight from manual patchify + linear proj to conv"""
         out_dict = {}
         for k, v in state_dict.items():
@@ -400,15 +348,20 @@ class VitFpn(nn.Module):
             x = self.patch_embed[i](x)
 
             x = x.flatten(2).transpose(1, 2)
+            # print('==================', 'B*L*C', x.shape, '=====================')
 
             # stole cls_tokens impl from Phil Wang, thanks
-            cls_tokens = self.cls_token.expand(B, -1, -1)
-            x = torch.cat((cls_tokens, x), dim=1)
-            x = x + self.pos_embed
+            # cls_tokens = self.cls_token[i].expand(B, -1, -1).cuda()
+            # print('cls_tokens', cls_tokens.shape)
+            # print('self.pos_embed', self.pos_embed[i].shape)
+            # x = torch.cat((cls_tokens, x), dim=1)
+            # x = x + self.pos_embed[i].cuda()
             x = self.pos_drop(x)
 
             for j, blk in enumerate(self.blocks[i]):
                 x = blk(x)
+            # print('===================== outputs of attention blocks', x.shape, '=======================')
+            x = self.to_2D(x)
+            # print('==================','outputs of 4 transformers stage', x.shape, '-------------------')
             outs.append(x)
-        print('------------------', outs.shape(), '-------------------')
         return tuple(outs)

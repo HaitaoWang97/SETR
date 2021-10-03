@@ -21,13 +21,12 @@ model = dict(
         contract_dilation=True),
     neck=[dict(
         type='VitFpn',
-        model_name='vit_large_patch16_384',
-        img_size=768,
-        patch_size=16,
-        in_chans=3,
-        embed_dim=1024,
-        depth=24,
-        num_heads=16,
+        img_size=[192, 96, 48, 24],
+        patch_size=[4, 4, 4, 4],
+        in_chans=[256, 512, 1024, 2048],
+        embed_dim=[256, 512, 1024, 2048],
+        depth=3,
+        num_heads=8,
         num_classes=19,
         drop_rate=0.1,
         norm_cfg=norm_cfg,
@@ -37,17 +36,18 @@ model = dict(
         type='FPN',
         in_channels=[256, 512, 1024, 2048],
         out_channels=256,
-        num_outs=4)],
+        num_outs=4,
+        )],
     decode_head=dict(
-        type='VisionTransformerUpHead',
-        in_channels=1024,
-        channels=512,
+        type='TransFpnHead',
+        in_channels=256,
+        channels=128,
         in_index=23,
         img_size=768,
-        embed_dim=1024,
+        embed_dim=256,
         num_classes=19,
         norm_cfg=norm_cfg,
-        num_conv=2,
+        num_conv=4,
         upsampling_method='bilinear',
         align_corners=False,
         loss_decode=dict(
@@ -61,4 +61,12 @@ crop_size = (768, 768)
 train_cfg = dict()
 test_cfg = dict(mode='slide', crop_size=crop_size, stride=(512, 512))
 find_unused_parameters = True
-data = dict(samples_per_gpu=1)
+data = dict(samples_per_gpu=2)
+
+
+# model settings
+# 1. resnet output [H/4, W/4, 256], [H/8, W/8, 512], [H/16, W/16, 1024], [H/32, W/32, 1024], [192, 96, 48, 24]
+# 2. patch size [4, 4, 4, 4], L[48*48, 24*24, 12*12, 6*6] pyramid size
+# 3. transformer [256, 512, 1024, 2048]
+# 4. img_size 768*768, batch size 2 for each gpu, 8682M for each gpu
+# 5. official cityscapes lable should be converted by scripts tools/convert_datasets/cityscapes.py
