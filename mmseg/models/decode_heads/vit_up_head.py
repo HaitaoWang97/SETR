@@ -96,6 +96,7 @@ class VisionTransformerUpHead(BaseDecodeHead):
                 self.conv_0 = nn.Conv2d(embed_dim, 256, 1, 1)
             self.conv_1 = nn.Conv2d(256, out_channel, 1, 1)
             _, self.syncbn_fc_0 = build_norm_layer(self.norm_cfg, 256)
+            # self.syncbn_fc_0 = nn.BatchNorm2d(256)
 
         elif self.num_conv == 4:
             self.conv_0 = nn.Conv2d(
@@ -112,6 +113,10 @@ class VisionTransformerUpHead(BaseDecodeHead):
             _, self.syncbn_fc_1 = build_norm_layer(self.norm_cfg, 256)
             _, self.syncbn_fc_2 = build_norm_layer(self.norm_cfg, 256)
             _, self.syncbn_fc_3 = build_norm_layer(self.norm_cfg, 256)
+            # self.syncbn_fc_0 = nn.BatchNorm2d(256)
+            # self.syncbn_fc_1 = nn.BatchNorm2d(256)
+            # self.syncbn_fc_2 = nn.BatchNorm2d(256)
+            # self.syncbn_fc_3 = nn.BatchNorm2d(256)
 
         # Segmentation head
 

@@ -156,6 +156,8 @@ class BaseDecodeHead(nn.Module, metaclass=ABCMeta):
         elif self.input_transform == 'multiple_select':
             inputs = [inputs[i] for i in self.in_index]
         else:
+            # print("==================== length of inputs ", len(inputs), ' ========================' )
+            # print("==================== length of inputs ", self.in_index, ' ========================')
             inputs = inputs[self.in_index]
 
         return inputs
