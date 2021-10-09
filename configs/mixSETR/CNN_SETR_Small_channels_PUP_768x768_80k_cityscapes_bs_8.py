@@ -1,6 +1,6 @@
 _base_ = [
     '../_base_/datasets/cityscapes_768x768.py', '../_base_/default_runtime.py',
-    '../_base_/schedules/schedule_160k.py'
+    '../_base_/schedules/schedule_80k.py'
 ]
 
 # model settings
@@ -25,7 +25,7 @@ model = dict(
         patch_size=[4, 4, 4, 4],
         in_chans=[256, 512, 1024, 2048],
         embed_dim=[16, 32, 64, 128],
-        depth=3,
+        depth=[3, 3, 6, 6],
         num_heads=8,
         num_classes=19,
         drop_rate=0.1,
@@ -34,17 +34,17 @@ model = dict(
         align_corners=False),
         dict(
         type='FPN',
-        in_channels=[256, 512, 1024, 2048],
-        out_channels=256,
+        in_channels=[16, 32, 64, 128],
+        out_channels=128,
         num_outs=4,
         )],
     decode_head=dict(
         type='TransFpnHead',
-        in_channels=256,
-        channels=128,
+        in_channels=128,
+        channels=64,
         in_index=23,
         img_size=768,
-        embed_dim=256,
+        embed_dim=128,
         num_classes=19,
         norm_cfg=norm_cfg,
         num_conv=4,
@@ -67,7 +67,8 @@ data = dict(samples_per_gpu=2)
 # model settings
 # 1. resnet output [H/4, W/4, 256], [H/8, W/8, 512], [H/16, W/16, 1024], [H/32, W/32, 1024], [192, 96, 48, 24]
 # 2. patch size [4, 4, 4, 4], L[48*48, 24*24, 12*12, 6*6] pyramid size
-# 3. transformer [256, 512, 1024, 2048]
-# 4. img_size 768*768, batch size 1 for each gpu, 8682M for each gpu, use 1 gpu
+# 3. transformer [16, 32, 64, 128]
+# 4. img_size 768*768, batch size 1 for each gpu, 8682M for each gpu, use 2 gpu
 # 5. official cityscapes lable should be converted by scripts tools/convert_datasets/cityscapes.py else raise runtimeerror cuda error
 # 6. reduce channel of embed_dim, [256, 512, 1024, 2048] reduce to [16, 32, 64, 128]
+# 7. increase last two transformer block depth from 3 to 6

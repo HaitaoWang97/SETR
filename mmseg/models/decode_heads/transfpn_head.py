@@ -91,27 +91,27 @@ class TransFpnHead(BaseDecodeHead):
         if self.num_conv == 2:
             if self.conv3x3_conv1x1:
                 self.conv_0 = nn.Conv2d(
-                    embed_dim, 256, kernel_size=3, stride=1, padding=1)
+                    embed_dim, 64, kernel_size=3, stride=1, padding=1)
             else:
-                self.conv_0 = nn.Conv2d(embed_dim, 256, 1, 1)
-            self.conv_1 = nn.Conv2d(256, out_channel, 1, 1)
-            _, self.syncbn_fc_0 = build_norm_layer(self.norm_cfg, 256)
+                self.conv_0 = nn.Conv2d(embed_dim, 64, 1, 1)
+            self.conv_1 = nn.Conv2d(64, out_channel, 1, 1)
+            _, self.syncbn_fc_0 = build_norm_layer(self.norm_cfg, 64)
 
         elif self.num_conv == 4:
             self.conv_0 = nn.Conv2d(
-                embed_dim, 128, kernel_size=3, stride=1, padding=1)
+                embed_dim, 64, kernel_size=3, stride=1, padding=1)
             self.conv_1 = nn.Conv2d(
-                128, 128, kernel_size=3, stride=1, padding=1)
+                64, 64, kernel_size=3, stride=1, padding=1)
             self.conv_2 = nn.Conv2d(
-                128, 128, kernel_size=3, stride=1, padding=1)
+                64, 64, kernel_size=3, stride=1, padding=1)
             self.conv_3 = nn.Conv2d(
-                128, 128, kernel_size=3, stride=1, padding=1)
-            self.conv_4 = nn.Conv2d(128, out_channel, kernel_size=1, stride=1)
+                64, 64, kernel_size=3, stride=1, padding=1)
+            self.conv_4 = nn.Conv2d(64, out_channel, kernel_size=1, stride=1)
 
-            _, self.syncbn_fc_0 = build_norm_layer(self.norm_cfg, 128)
-            _, self.syncbn_fc_1 = build_norm_layer(self.norm_cfg, 128)
-            _, self.syncbn_fc_2 = build_norm_layer(self.norm_cfg, 128)
-            _, self.syncbn_fc_3 = build_norm_layer(self.norm_cfg, 128)
+            _, self.syncbn_fc_0 = build_norm_layer(self.norm_cfg, 64)
+            _, self.syncbn_fc_1 = build_norm_layer(self.norm_cfg, 64)
+            _, self.syncbn_fc_2 = build_norm_layer(self.norm_cfg, 64)
+            _, self.syncbn_fc_3 = build_norm_layer(self.norm_cfg, 64)
 
         # Segmentation head
 
