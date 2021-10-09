@@ -281,15 +281,24 @@ class VitFpn(nn.Module):
         #     1, self.num_patches[i] + 1, self.embed_dim[i])) for i in range(self.num_stages)]
         self.pos_drop = nn.Dropout(p=self.drop_rate)
 
-        dpr = [x.item() for x in torch.linspace(0, self.drop_path_rate,
-                                                self.depth)]  # stochastic depth decay rule
+        #dpr = [x.item() for x in torch.linspace(0, self.drop_path_rate,
+         #       self.depth)]  # stochastic depth decay rule
+        dpr_3 = [x.item() for x in torch.linspace(0, self.drop_path_rate, self.depth[0])]
+        dpr_6 = [x.item() for x in torch.linspace(0, self.drop_path_rate, self.depth[2])]
         self.blocks = nn.ModuleList([])
-        for i in range(self.num_stages):
+        for i in range(self.num_stages-2):
              self.blocks.append(nn.ModuleList([
                 Block(
                     dim=self.embed_dim[i], num_heads=self.num_heads, mlp_ratio=self.mlp_ratio, qkv_bias=self.qkv_bias, qk_scale=self.qk_scale,
-                    drop=self.drop_rate, attn_drop=self.attn_drop_rate, drop_path=dpr[j], norm_layer=self.norm_layer)
-                for j in range(self.depth)]))
+                    drop=self.drop_rate, attn_drop=self.attn_drop_rate, drop_path=dpr_3[j], norm_layer=self.norm_layer)
+                for j in range(self.depth[i])]))
+
+        for i in range(self.num_stages-2, self.num_stages):
+            self.blocks.append(nn.ModuleList([
+                Block(
+                    dim=self.embed_dim[i], num_heads=self.num_heads, mlp_ratio=self.mlp_ratio, qkv_bias=self.qkv_bias, qk_scale=self.qk_scale,
+                    drop=self.drop_rate, attn_drop=self.attn_drop_rate, drop_path=dpr_6[j], norm_layer=self.norm_layer)
+                for j in range(self.depth[i])]))
 
         # NOTE as per official impl, we could have a pre-logits representation dense layer + tanh here
         # self.repr = nn.Linear(embed_dim, representation_size)

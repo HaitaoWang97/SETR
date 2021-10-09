@@ -1,7 +1,7 @@
 _base_ = [
     '../_base_/models/setr_naive_pup.py',
     '../_base_/datasets/cityscapes_768x768.py', '../_base_/default_runtime.py',
-    '../_base_/schedules/schedule_80k.py'
+    '../_base_/schedules/schedule_160k.py'
 ]
 norm_cfg = dict(type='SyncBN', requires_grad=True)
 model = dict(
@@ -78,7 +78,8 @@ optimizer = dict(lr=0.01, weight_decay=0.0,
 crop_size = (768, 768)
 test_cfg = dict(mode='slide', crop_size=crop_size, stride=(512, 512))
 find_unused_parameters = True
-data = dict(samples_per_gpu=2)
+data = dict(samples_per_gpu=1)
 
 
 # 1. change depth of transformer to 12, and here set auxiliary decoder loss in 2,5,8,11 depth
+# 2. iter 160k without pretrained
