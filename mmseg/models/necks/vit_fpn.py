@@ -1,3 +1,4 @@
+from typing import List
 import torch
 import torch.nn as nn
 from functools import partial
@@ -280,11 +281,19 @@ class VitFpn(nn.Module):
         # self.pos_embed = [nn.Parameter(torch.zeros(
         #     1, self.num_patches[i] + 1, self.embed_dim[i])) for i in range(self.num_stages)]
         self.pos_drop = nn.Dropout(p=self.drop_rate)
+        # dpr = [x.item() for x in torch.linspace(0, self.drop_path_rate,
+        #                                         self.depth)]
+        #if type(self.depth) == List:
+         #   dpr_3 = [x.item() for x in torch.linspace(0, self.drop_path_rate,
+                                                   # self.depth[0])]  # stochastic depth decay rule
+          #  dpr_6 = [x.item() for x in torch.linspace(0, self.drop_path_rate,
+                                                   # self.depth[2])]
 
         #dpr = [x.item() for x in torch.linspace(0, self.drop_path_rate,
          #       self.depth)]  # stochastic depth decay rule
         dpr_3 = [x.item() for x in torch.linspace(0, self.drop_path_rate, self.depth[0])]
         dpr_6 = [x.item() for x in torch.linspace(0, self.drop_path_rate, self.depth[2])]
+
         self.blocks = nn.ModuleList([])
         for i in range(self.num_stages-2):
              self.blocks.append(nn.ModuleList([
