@@ -330,23 +330,23 @@ class AsppVit(nn.Module):
 
         #dpr = [x.item() for x in torch.linspace(0, self.drop_path_rate,
          #       self.depth)]  # stochastic depth decay rule
-        dpr_3 = [x.item() for x in torch.linspace(0, self.drop_path_rate, self.depth[0])]
-        dpr_6 = [x.item() for x in torch.linspace(0, self.drop_path_rate, self.depth[2])]
+        dpr_6 = [x.item() for x in torch.linspace(0, self.drop_path_rate, self.depth[1])]
+        dpr_12 = [x.item() for x in torch.linspace(0, self.drop_path_rate, self.depth[2])]
 
         self.blocks = nn.ModuleList([])
-        for i in range(1, self.num_stages-2):
-             self.blocks.append(nn.ModuleList([
-                Block(
-                    dim=self.embed_dim[i], num_heads=self.num_heads, mlp_ratio=self.mlp_ratio, qkv_bias=self.qkv_bias, qk_scale=self.qk_scale,
-                    drop=self.drop_rate, attn_drop=self.attn_drop_rate, drop_path=dpr_3[j], norm_layer=self.norm_layer)
-                for j in range(self.depth[i])]))
-
-        for i in range(self.num_stages-2, self.num_stages):
-            self.blocks.append(nn.ModuleList([
-                Block(
-                    dim=self.embed_dim[i], num_heads=self.num_heads, mlp_ratio=self.mlp_ratio, qkv_bias=self.qkv_bias, qk_scale=self.qk_scale,
-                    drop=self.drop_rate, attn_drop=self.attn_drop_rate, drop_path=dpr_6[j], norm_layer=self.norm_layer)
-                for j in range(self.depth[i])]))
+        for i in range(1, self.num_stages):
+            if i == 1 or i == 3:
+                 self.blocks.append(nn.ModuleList([
+                    Block(
+                        dim=self.embed_dim[i], num_heads=self.num_heads[i], mlp_ratio=self.mlp_ratio, qkv_bias=self.qkv_bias, qk_scale=self.qk_scale,
+                        drop=self.drop_rate, attn_drop=self.attn_drop_rate, drop_path=dpr_6[j], norm_layer=self.norm_layer)
+                    for j in range(self.depth[i])]))
+            if i == 2:
+                self.blocks.append(nn.ModuleList([
+                    Block(
+                        dim=self.embed_dim[i], num_heads=self.num_heads[i], mlp_ratio=self.mlp_ratio, qkv_bias=self.qkv_bias, qk_scale=self.qk_scale,
+                        drop=self.drop_rate, attn_drop=self.attn_drop_rate, drop_path=dpr_12[j], norm_layer=self.norm_layer)
+                    for j in range(self.depth[i])]))
 
         self.aspp_module = ASPPModule(
             dilations=(1, 6, 12, 18),
@@ -411,7 +411,7 @@ class AsppVit(nn.Module):
         for i in range(1, len(fp)):
             x = fp[i]
             B, C, H, W = x.shape
-            x = self.patch_embed[-1](x)
+            x = self.patch_embed[i-1](x)
 
             x = x.flatten(2).transpose(1, 2)
             # print('==================', 'B*L*C', x.shape, '=====================')
