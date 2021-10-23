@@ -319,9 +319,9 @@ class VisionTransformer(nn.Module):
                 img_size=self.img_size, patch_size=self.patch_size, in_chans=self.in_chans, embed_dim=self.embed_dim)
         self.num_patches = self.patch_embed.num_patches
 
-        self.cls_token = nn.Parameter(torch.zeros(1, 1, self.embed_dim))
+        #self.cls_token = nn.Parameter(torch.zeros(1, 1, self.embed_dim))
         self.pos_embed = nn.Parameter(torch.zeros(
-            1, self.num_patches + 1, self.embed_dim))
+            1, self.num_patches, self.embed_dim))
         self.pos_drop = nn.Dropout(p=self.drop_rate)
 
         dpr = [x.item() for x in torch.linspace(0, self.drop_path_rate,
@@ -337,7 +337,7 @@ class VisionTransformer(nn.Module):
         # self.repr_act = nn.Tanh()
 
         trunc_normal_(self.pos_embed, std=.02)
-        trunc_normal_(self.cls_token, std=.02)
+        #trunc_normal_(self.cls_token, std=.02)
         # self.apply(self._init_weights)
 
     def init_weights(self, pretrained=None):
@@ -380,6 +380,7 @@ class VisionTransformer(nn.Module):
 
     def to_2D(self, x):
         n, hw, c = x.shape
+        #print("============ ", x.shape, "==============")
         h = w = int(math.sqrt(hw))
         x = x.transpose(1, 2).reshape(n, c, h, w)
         return x
@@ -396,14 +397,16 @@ class VisionTransformer(nn.Module):
         x = x.flatten(2).transpose(1, 2)
 
         # stole cls_tokens impl from Phil Wang, thanks
-        cls_tokens = self.cls_token.expand(B, -1, -1)
-        x = torch.cat((cls_tokens, x), dim=1)
+        #cls_tokens = self.cls_token.expand(B, -1, -1)
+        #x = torch.cat((cls_tokens, x), dim=1)
         x = x + self.pos_embed
         x = self.pos_drop(x)
 
         outs = []
         for i, blk in enumerate(self.blocks):
             x = blk(x)
-            if i in self.out_indices:
-                outs.append(x)
+            #if i in self.out_indices:
+        x = self.to_2D(x)
+        #print("============== ", x.shape, "=============")
+        outs.append(x)
         return tuple(outs)
