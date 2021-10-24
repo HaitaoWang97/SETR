@@ -402,11 +402,12 @@ class VisionTransformer(nn.Module):
         x = x + self.pos_embed
         x = self.pos_drop(x)
 
-        outs = []
+        #outs = []
         for i, blk in enumerate(self.blocks):
             x = blk(x)
             #if i in self.out_indices:
         x = self.to_2D(x)
         #print("============== ", x.shape, "=============")
-        outs.append(x)
-        return tuple(outs)
+        #outs.append(x)
+        #return tuple(outs)
+        return x

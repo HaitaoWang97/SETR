@@ -8,6 +8,7 @@ from itertools import repeat
 from torch._six import container_abcs
 import warnings
 from ..backbones.vit import VisionTransformer
+from mmcv.cnn import build_norm_layer
 
 from ..builder import NECKS
 # from .helpers import load_pretrained
@@ -71,7 +72,7 @@ def trunc_normal_(tensor, mean=0., std=1., a=-2., b=2.):
 
 @NECKS.register_module()
 class VitUp(nn.Module):
-    def __init__(self, img_size=48, patch_size=1, in_chans=2048, embed_dim=256, depth=12, num_heads=8, num_classes=19,
+    def __init__(self, model_name=None, img_size=48, patch_size=1, in_chans=2048, embed_dim=256, depth=12, num_heads=8, num_classes=19,
                  norm_cfg=None, **kwargs):
         super(VitUp, self).__init__(**kwargs)
         self.img_size = img_size
@@ -83,19 +84,19 @@ class VitUp(nn.Module):
         self.num_classes = num_classes
         self.norm_cfg = norm_cfg
 
-        self.vit = VisionTransformer(img_size=self.img_size, patch_size=self.patch_size, in_chans=self.in_chans,
+        self.vit = VisionTransformer(model_name=model_name, img_size=self.img_size, patch_size=self.patch_size, in_chans=self.in_chans,
                                      embed_dim=self.embed_dim, depth=self.depth, num_heads=self.num_heads,
                                      num_classes=self.num_classes, norm_cfg=self.norm_cfg)
         self.conv_0 = nn.Conv2d(
-            embed_dim, 256, kernel_size=1, stride=1, padding=1)
+            embed_dim, 256, kernel_size=1, stride=1, padding=0)
         self.conv_1 = nn.Conv2d(
             320, 256, kernel_size=5, stride=1, padding=2)
         self.conv_2 = nn.Conv2d(
-            282, 256, kernel_size=5, stride=1, padding=2)
+            288, 256, kernel_size=5, stride=1, padding=2)
         self.conv_3 = nn.Conv2d(
-            256, 32, kernel_size=1, stride=1, padding=1)
+            256, 32, kernel_size=1, stride=1, padding=0)
         self.conv_4 = nn.Conv2d(
-            512, 64, kernel_size=1, stride=1, padding=1)
+            512, 64, kernel_size=1, stride=1, padding=0)
 
         _, self.syncbn_fc_0 = build_norm_layer(self.norm_cfg, 256)
         _, self.syncbn_fc_1 = build_norm_layer(self.norm_cfg, 256)
@@ -117,16 +118,21 @@ class VitUp(nn.Module):
         trans_out = self.syncbn_fc_0(trans_out)
         trans_out = F.relu(trans_out, inplace=True)
         trans_out = F.interpolate(
-            out, size=trans_out.shape[-1] * 2, mode='bilinear', align_corners=False)
+            trans_out, size=trans_out.shape[-1] * 2, mode='bilinear', align_corners=False)
         first_out = self.conv_3(x[0])
         second_out = self.conv_4(x[1])
+        #print("======= trans out ====", trans_out.shape, " ==========")
+        #print("======= second out ====", second_out.shape, "===========")
         out = torch.cat((trans_out, second_out), dim=1)
         out = self.conv_1(out)
         out = self.syncbn_fc_1(out)
         out = F.relu(out, inplace=True)
+        out = F.interpolate(
+                out, size=out.shape[-1] * 2, mode='bilinear', align_corners=False)
         out = torch.cat((out, first_out), dim=1)
         out = self.conv_2(out)
         out = self.syncbn_fc_2(out)
         out = F.relu(out, inplace=True)
-        return tuple(out)
+        #print("======================", out.shape,"================")
+        return tuple([x[1], out])
 

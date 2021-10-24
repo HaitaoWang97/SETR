@@ -7,14 +7,14 @@ _base_ = [
 norm_cfg = dict(type='SyncBN', requires_grad=True)
 model = dict(
     type='EncoderDecoder',
-    pretrained='open-mmlab://resnet50_v1c',
+    #pretrained='open-mmlab://resnet50_v1c',
     backbone=dict(
         type='ResNetVit',
         in_channels=3,
         stem_channels=64,
         embed_channels=256,
         img_size=192,
-        patch=2,
+        patch=4,
         trans_depth=12,
         num_heads=8,
         style='pytorch',
