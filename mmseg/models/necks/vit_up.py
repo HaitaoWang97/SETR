@@ -88,7 +88,7 @@ class VitUp(nn.Module):
                                      embed_dim=self.embed_dim, depth=self.depth, num_heads=self.num_heads,
                                      num_classes=self.num_classes, norm_cfg=self.norm_cfg)
         self.conv_0 = nn.Conv2d(
-            embed_dim, 256, kernel_size=1, stride=1, padding=0)
+            self.embed_dim, 256, kernel_size=1, stride=1, padding=0)
         self.conv_1 = nn.Conv2d(
             320, 256, kernel_size=5, stride=1, padding=2)
         self.conv_2 = nn.Conv2d(
@@ -134,5 +134,5 @@ class VitUp(nn.Module):
         out = self.syncbn_fc_2(out)
         out = F.relu(out, inplace=True)
         #print("======================", out.shape,"================")
-        return tuple([x[1], out])
+        return tuple([x[2], out])
 
