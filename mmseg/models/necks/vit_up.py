@@ -90,13 +90,13 @@ class VitUp(nn.Module):
         self.conv_0 = nn.Conv2d(
             self.embed_dim, 256, kernel_size=1, stride=1, padding=0)
         self.conv_1 = nn.Conv2d(
-            320, 256, kernel_size=5, stride=1, padding=2)
+            384, 256, kernel_size=5, stride=1, padding=2)
         self.conv_2 = nn.Conv2d(
-            288, 256, kernel_size=5, stride=1, padding=2)
+            320, 256, kernel_size=5, stride=1, padding=2)
         self.conv_3 = nn.Conv2d(
-            256, 32, kernel_size=1, stride=1, padding=0)
-        self.conv_4 = nn.Conv2d(
             512, 64, kernel_size=1, stride=1, padding=0)
+        self.conv_4 = nn.Conv2d(
+            1024, 128, kernel_size=1, stride=1, padding=0)
 
         _, self.syncbn_fc_0 = build_norm_layer(self.norm_cfg, 256)
         _, self.syncbn_fc_1 = build_norm_layer(self.norm_cfg, 256)
@@ -119,8 +119,8 @@ class VitUp(nn.Module):
         trans_out = F.relu(trans_out, inplace=True)
         trans_out = F.interpolate(
             trans_out, size=trans_out.shape[-1] * 2, mode='bilinear', align_corners=False)
-        first_out = self.conv_3(x[0])
-        second_out = self.conv_4(x[1])
+        first_out = self.conv_3(x[1])
+        second_out = self.conv_4(x[2])
         #print("======= trans out ====", trans_out.shape, " ==========")
         #print("======= second out ====", second_out.shape, "===========")
         out = torch.cat((trans_out, second_out), dim=1)
@@ -134,5 +134,5 @@ class VitUp(nn.Module):
         out = self.syncbn_fc_2(out)
         out = F.relu(out, inplace=True)
         #print("======================", out.shape,"================")
-        return tuple([x[2], out])
+        return tuple([x[1], out])
 
