@@ -90,13 +90,13 @@ class VitUpV2(nn.Module):
         # self.conv_0 = nn.Conv2d(
         #     self.embed_dim, 1024, kernel_size=1, stride=1, padding=0)
         self.conv_1 = nn.Conv2d(
-            256, 128, kernel_size=1, stride=1, padding=0)
+            256, 128, kernel_size=3, stride=1, padding=2)
         self.conv_2 = nn.Conv2d(
-            512, 128, kernel_size=1, stride=1, padding=0)
+            512, 128, kernel_size=3, stride=1, padding=2)
         self.conv_3 = nn.Conv2d(
-            128, 128, kernel_size=5, stride=1, padding=2)
+            128, 128, kernel_size=1, stride=1, padding=0)
         self.conv_4 = nn.Conv2d(
-            128, 128, kernel_size=5, stride=1, padding=2)
+            128, 128, kernel_size=1, stride=1, padding=0)
 
         # _, self.syncbn_fc_0 = build_norm_layer(self.norm_cfg, 1024)
         _, self.syncbn_fc_1 = build_norm_layer(self.norm_cfg, 128)
@@ -123,11 +123,12 @@ class VitUpV2(nn.Module):
         first_out = self.conv_1(x[0])
         first_out = self.syncbn_fc_1(first_out)
         first_out = F.relu(first_out, inplace=True)
-        first_out = F.interpolate(first_out, size=first_out.shape[-1]*2, mode='bilinear', align_corners=False)
 
         second_out = self.conv_2(x[1])
         second_out = self.syncbn_fc_2(second_out)
         second_out = F.relu(second_out, inplace=True)
+        second_out = F.interpolate(second_out, size=second_out.shape[-1] * 2, mode='bilinear', align_corners=False)
+
         out = torch.add(first_out, second_out)
         out = self.conv_3(out)
         out = self.syncbn_fc_3(out)
@@ -138,6 +139,6 @@ class VitUpV2(nn.Module):
         out = F.relu(out, inplace=True)
         out = F.interpolate(out, size=out.shape[-1] * 2, mode='bilinear', align_corners=False)
 
-        print("======================", out.shape,"================")    # 192x192x128
+        print("======================", out.shape,"================")    # x192x128
         print("======================", trans_out.shape, "================") # 48x48x512
         return tuple([out, trans_out])
