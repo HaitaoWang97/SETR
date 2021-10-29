@@ -71,10 +71,10 @@ def trunc_normal_(tensor, mean=0., std=1., a=-2., b=2.):
 
 
 @NECKS.register_module()
-class VitUpV2(nn.Module):
+class VitUpV3(nn.Module):
     def __init__(self, model_name=None, img_size=48, patch_size=1, in_chans=2048, embed_dim=256, depth=12, num_heads=8, num_classes=19,
                  norm_cfg=None, **kwargs):
-        super(VitUpV2, self).__init__(**kwargs)
+        super(VitUpV3, self).__init__(**kwargs)
         self.img_size = img_size
         self.patch_size = patch_size
         self.in_chans = in_chans
@@ -87,22 +87,35 @@ class VitUpV2(nn.Module):
         self.vit = VisionTransformer(model_name=model_name, img_size=self.img_size, patch_size=self.patch_size, in_chans=self.in_chans,
                                      embed_dim=self.embed_dim, depth=self.depth, num_heads=self.num_heads,
                                      num_classes=self.num_classes, norm_cfg=self.norm_cfg)
-        # self.conv_0 = nn.Conv2d(
-        #     self.embed_dim, 1024, kernel_size=1, stride=1, padding=0)
+        self.conv_0 = nn.Conv2d(
+            self.embed_dim, 256, kernel_size=1, stride=1, padding=0)
         self.conv_1 = nn.Conv2d(
-            256, 128, kernel_size=3, stride=1, padding=2)
+            256, 32, kernel_size=1, stride=1, padding=0)
         self.conv_2 = nn.Conv2d(
-            512, 128, kernel_size=3, stride=1, padding=2)
+            512, 64, kernel_size=1, stride=1, padding=0)
         self.conv_3 = nn.Conv2d(
-            128, 128, kernel_size=1, stride=1, padding=0)
+            320, 256, kernel_size=5, stride=1, padding=2)
         self.conv_4 = nn.Conv2d(
-            128, 128, kernel_size=1, stride=1, padding=0)
+            288, 256, kernel_size=5, stride=1, padding=2)
+
+        self.conv_5 = nn.Conv2d(
+            256, 256, kernel_size=3, stride=1, padding=2)
+        self.conv_6 = nn.Conv2d(
+            512, 256, kernel_size=3, stride=1, padding=2)
+        self.conv_7 = nn.Conv2d(
+            256, 256, kernel_size=1, stride=1, padding=0)
+        self.conv_8 = nn.Conv2d(
+            256, 256, kernel_size=1, stride=1, padding=0)
+
+        _, self.syncbn_fc_0 = build_norm_layer(self.norm_cfg, 256)
+        _, self.syncbn_fc_1 = build_norm_layer(self.norm_cfg, 256)
+        _, self.syncbn_fc_2 = build_norm_layer(self.norm_cfg, 256)
 
         # _, self.syncbn_fc_0 = build_norm_layer(self.norm_cfg, 1024)
-        _, self.syncbn_fc_1 = build_norm_layer(self.norm_cfg, 128)
-        _, self.syncbn_fc_2 = build_norm_layer(self.norm_cfg, 128)
         _, self.syncbn_fc_3 = build_norm_layer(self.norm_cfg, 128)
         _, self.syncbn_fc_4 = build_norm_layer(self.norm_cfg, 128)
+        _, self.syncbn_fc_5 = build_norm_layer(self.norm_cfg, 128)
+        _, self.syncbn_fc_6 = build_norm_layer(self.norm_cfg, 128)
 
     def init_weights(self):
         for m in self.modules():
@@ -116,29 +129,43 @@ class VitUpV2(nn.Module):
 
     def forward(self, x):
         trans_out = self.vit(x[-1])
-        # trans_out = self.conv_0(trans_out)
-        # trans_out = self.syncbn_fc_0(trans_out)
-        # trans_out = F.relu(trans_out, inplace=True)
-
+        trans_out = self.conv_0(trans_out)
+        trans_out = self.syncbn_fc_0(trans_out)
+        trans_out = F.relu(trans_out, inplace=True)
+        trans_out = F.interpolate(
+            trans_out, size=trans_out.shape[-1] * 2, mode='bilinear', align_corners=False)
         first_out = self.conv_1(x[0])
-        first_out = self.syncbn_fc_1(first_out)
-        first_out = F.relu(first_out, inplace=True)
-
         second_out = self.conv_2(x[1])
-        second_out = self.syncbn_fc_2(second_out)
-        second_out = F.relu(second_out, inplace=True)
-        second_out = F.interpolate(second_out, size=second_out.shape[-1] * 2, mode='bilinear', align_corners=False)
 
-        out = torch.add(first_out, second_out)
+        out = torch.cat((trans_out, second_out), dim=1)
         out = self.conv_3(out)
-        out = self.syncbn_fc_3(out)
+        out = self.syncbn_fc_1(out)
         out = F.relu(out, inplace=True)
-        out = F.interpolate(out, size=out.shape[-1] * 2, mode='bilinear', align_corners=False)
+        out = F.interpolate(
+                out, size=out.shape[-1] * 2, mode='bilinear', align_corners=False)
+        out = torch.cat((out, first_out), dim=1)
         out = self.conv_4(out)
-        out = self.syncbn_fc_4(out)
+        out = self.syncbn_fc_2(out)
         out = F.relu(out, inplace=True)
-        out = F.interpolate(out, size=out.shape[-1] * 2, mode='bilinear', align_corners=False)
+        #print("======================", out.shape,"================")
 
-        print("======================", out.shape,"================")    # 768x768x128
-        print("======================", trans_out.shape, "================") # 48x48x512
-        return tuple([out, trans_out])
+        first = self.conv_5(x[0])
+        first = self.syncbn_fc_3(first)
+        first = F.relu(first, inplace=True)
+        second = self.conv_6(x[1])
+        second = self.syncbn_fc_4(second)
+        second = F.relu(second, inplace=True)
+        second = F.interpolate(second, size=second.shape[-1] * 2, mode='bilinear', align_corners=False)
+
+        out_aspp = torch.add(first, second)
+        out_aspp = self.conv_7(out_aspp)
+        out_aspp = self.syncbn_fc_5(out_aspp)
+        out_aspp = F.relu(out_aspp, inplace=True)
+        out_aspp = F.interpolate(out_aspp, size=out_aspp.shape[-1] * 2, mode='bilinear', align_corners=False)
+        out_aspp = self.conv_4(out_aspp)
+        out_aspp = self.syncbn_fc_4(out_aspp)
+        out_aspp = F.relu(out_aspp, inplace=True)
+        out_aspp = F.interpolate(out_aspp, size=out_aspp.shape[-1] * 2, mode='bilinear', align_corners=False)
+
+        return tuple([out_aspp, out])
+
